@@ -1,5 +1,5 @@
 
-# Full Stack Whatsapp using Next.js, Socket.io, Node.js
+# Full Stack chat web using Next.js, Socket.io, Node.js
 
 
 This is the complete Source Code for the Whatsapp Clone built using Next.js, Socket.io, Node.js, Firebase, Tailwind CSS, Prisma, PostgresSQL, and many more awesome technologies with Voice Call and Video Call Functionality.
