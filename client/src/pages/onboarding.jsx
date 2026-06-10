@@ -69,7 +69,7 @@ export default function OnBoarding() {
           router.push("/");
         }
       } catch (error) {
-        console.log(error);
+        // Failed to create user profile.
       }
     }
   };
