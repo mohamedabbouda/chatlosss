@@ -24,10 +24,11 @@ model Messages {
   id Int @id @default(autoincrement())
   sender User @relation("sentMessages",fields:[senderId],references: [id])
   senderId Int
-  reciever User @relation("recievedMessages", fields: [recieverId],references: [id])
+  reciever User @relation("recievedMessages", fields:[recieverId],references:[id])
   recieverId Int
   type String @default("text")
   message String
+  transcript String @default("")
   messageStatus String @default("sent")
   createdAt DateTime @default(now())
 }
