@@ -2,84 +2,87 @@ import { useStateProvider } from "@/context/StateContext";
 import React, { useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import Avatar from "../common/Avatar";
-import { FaPlay, FaStop } from "react-icons/fa";
+import { FaPause, FaPlay } from "react-icons/fa";
 import { HOST } from "@/utils/ApiRoutes";
 import { calculateTime } from "@/utils/CalculateTime";
 import MessageStatus from "../common/MessageStatus";
+import { MdGraphicEq } from "react-icons/md";
 
 function VoiceMessage({ message }) {
   const [{ currentChatUser, userInfo }] = useStateProvider();
-  const [audioMessage, setAudioMessage] = useState(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
-  const [waveformReady, setWaveformReady] = useState(false);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
+
   const waveformRef = useRef(null);
   const waveform = useRef(null);
 
-  useEffect(() => {
-    if (waveform.current === null) {
-      waveform.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: "#ccc",
-        progressColor: "#4a9eff",
-        cursorColor: "#7ae3c3",
-        barWidth: 2,
-        height: 30,
-        responsive: true,
-      });
-      waveform.current.on("finish", () => {
-        setIsPlaying(false);
-      });
-    }
-    return () => {
-      waveform.current.destroy();
-    };
-  }, []);
+  const isIncoming = message.senderId === currentChatUser.id;
+  const audioURL = `${HOST}/${message.message}`;
 
   useEffect(() => {
-    const audioURL = `${HOST}/${message.message}`;
-    const audio = new Audio(audioURL);
-    setAudioMessage(audio);
-    setWaveformReady(true);
+    if (!waveformRef.current) {
+      return;
+    }
+
+    waveform.current = WaveSurfer.create({
+      container: waveformRef.current,
+      waveColor: "#9ca3af",
+      progressColor: "#22c55e",
+      cursorColor: "transparent",
+      barWidth: 3,
+      barGap: 2,
+      barRadius: 3,
+      height: 34,
+      normalize: true,
+      responsive: true,
+    });
+
     waveform.current.load(audioURL);
+
     waveform.current.on("ready", () => {
       setTotalDuration(waveform.current.getDuration());
     });
-  }, [message.message]);
 
-  const handlePlayAudio = () => {
-    if (audioMessage) {
-      waveform.current.stop();
-      waveform.current.play();
-      audioMessage.play();
-      setIsPlaying(true);
-    }
-  };
+    waveform.current.on("audioprocess", () => {
+      setCurrentPlaybackTime(waveform.current.getCurrentTime());
+    });
 
-  const handlePauseAudio = () => {
-    if (audioMessage) {
-      waveform.current.stop();
-      audioMessage.pause();
+    waveform.current.on("seek", () => {
+      setCurrentPlaybackTime(waveform.current.getCurrentTime());
+    });
+
+    waveform.current.on("finish", () => {
       setIsPlaying(false);
-    }
-  };
+      setCurrentPlaybackTime(0);
+    });
 
-  useEffect(() => {
-    if (audioMessage) {
-      const updatePlaybackTime = () => {
-        setCurrentPlaybackTime(audioMessage.currentTime);
-      };
-      audioMessage.addEventListener("timeupdate", updatePlaybackTime);
-      return () => {
-        audioMessage.removeEventListener("timeupdate", updatePlaybackTime);
-      };
+    return () => {
+      if (waveform.current) {
+        waveform.current.destroy();
+        waveform.current = null;
+      }
+    };
+  }, [audioURL]);
+
+  const toggleAudio = () => {
+    if (!waveform.current) {
+      return;
     }
-  }, [audioMessage]);
+
+    waveform.current.playPause();
+    setIsPlaying(waveform.current.isPlaying());
+  };
 
   const formatTime = (time) => {
+    if (!time || Number.isNaN(time)) {
+      return "00:00";
+    }
+
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
+
     return `${minutes.toString().padStart(2, "0")}:${seconds
       .toString()
       .padStart(2, "0")}`;
@@ -87,36 +90,58 @@ function VoiceMessage({ message }) {
 
   return (
     <div
-      className={`flex items-center gap-5 text-white px-4 pr-2 py-4 text-sm rounded-md    ${
-        message.senderId === currentChatUser.id
-          ? "bg-incoming-background"
-          : "bg-outgoing-background"
+      className={`text-white rounded-2xl px-3 py-2 w-[340px] max-w-[80vw] shadow-sm ${
+        isIncoming ? "bg-incoming-background" : "bg-outgoing-background"
       }`}
     >
-      <div>
-        <Avatar type="lg" image={currentChatUser?.profilePicture} />
-      </div>
-      <div className="cursor-pointer text-xl">
-        {!isPlaying ? (
-          <FaPlay onClick={handlePlayAudio} />
-        ) : (
-          <FaStop onClick={handlePauseAudio} />
-        )}
-      </div>
-      <div className="relative">
-        <div className="w-60" ref={waveformRef} />
-        <div className="text-bubble-meta text-[11px] pt-1  flex justify-between absolute bottom-[-22px] w-full ">
-          <span>
-            {formatTime(isPlaying ? currentPlaybackTime : totalDuration)}
-          </span>
-          <div className="flex gap-1">
-            <span>{calculateTime(message.createdAt)}</span>
-            {message.senderId === userInfo.id && (
-              <MessageStatus messageStatus={message.messageStatus} />
-            )}
+      <div className="flex items-center gap-3">
+        <Avatar
+          type="sm"
+          image={
+            isIncoming ? currentChatUser?.profilePicture : userInfo?.profileImage
+          }
+        />
+
+        <button
+          type="button"
+          onClick={toggleAudio}
+          className="h-10 w-10 rounded-full bg-panel-header-background flex items-center justify-center hover:scale-105 transition-transform"
+          title={isPlaying ? "Pause audio" : "Play audio"}
+        >
+          {isPlaying ? (
+            <FaPause className="text-sm text-icon-green" />
+          ) : (
+            <FaPlay className="text-sm text-icon-green ml-[2px]" />
+          )}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <MdGraphicEq className="text-icon-green text-lg min-w-fit" />
+            <span className="text-xs text-bubble-meta">
+              Voice message
+            </span>
+          </div>
+
+          <div ref={waveformRef} className="w-full cursor-pointer" />
+
+          <div className="flex justify-between items-center mt-1 text-bubble-meta text-[11px]">
+            <span>
+              {formatTime(isPlaying ? currentPlaybackTime : totalDuration)}
+            </span>
+
+            <div className="flex items-center gap-1">
+              <span>{calculateTime(message.createdAt)}</span>
+
+              {message.senderId === userInfo.id && (
+                <MessageStatus messageStatus={message.messageStatus} />
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+    
     </div>
   );
 }
