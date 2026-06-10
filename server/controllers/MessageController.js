@@ -23,7 +23,6 @@ export const getMessages = async (req, res, next) => {
       },
     });
     const unreadMessages = [];
-    console.log(unreadMessages)
 
     messages.forEach((message, index) => {
       if (
@@ -34,7 +33,6 @@ export const getMessages = async (req, res, next) => {
         unreadMessages.push(message.id);
       }
     });
-    console.log(unreadMessages)
 
 
 
