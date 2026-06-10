@@ -1,5 +1,6 @@
 import { renameSync } from "fs";
 import getPrismaInstance from "../utils/PrismaClient.js";
+import { transcribeAudioFile } from "../utils/TranscriptionService.js";
 
 const parseUserId = (value) => {
   const parsed = Number.parseInt(value, 10);
@@ -77,6 +78,7 @@ export const addMessage = async (req, res, next) => {
     const newMessage = await prisma.messages.create({
       data: {
         message,
+        transcript: "",
         sender: { connect: { id: from } },
         reciever: { connect: { id: to } },
         messageStatus: getUser ? "delivered" : "sent",
@@ -136,6 +138,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
           id,
           type,
           message,
+          transcript,
           messageStatus,
           createdAt,
           senderId,
@@ -146,6 +149,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
           messageId: id,
           type,
           message,
+          transcript,
           messageStatus,
           createdAt,
           senderId,
@@ -202,7 +206,7 @@ export const addAudioMessage = async (req, res, next) => {
   try {
     if (req.file) {
       const date = Date.now();
-      let fileName = "uploads/recordings/" + date + req.file.originalname;
+      const fileName = "uploads/recordings/" + date + req.file.originalname;
       renameSync(req.file.path, fileName);
 
       const prisma = getPrismaInstance();
@@ -210,9 +214,12 @@ export const addAudioMessage = async (req, res, next) => {
       const to = parseUserId(req.query.to);
 
       if (from && to) {
+        const transcript = await transcribeAudioFile(fileName);
+
         const message = await prisma.messages.create({
           data: {
             message: fileName,
+            transcript,
             sender: { connect: { id: from } },
             reciever: { connect: { id: to } },
             type: "audio",
@@ -235,7 +242,7 @@ export const addImageMessage = async (req, res, next) => {
   try {
     if (req.file) {
       const date = Date.now();
-      let fileName = "uploads/images/" + date + req.file.originalname;
+      const fileName = "uploads/images/" + date + req.file.originalname;
       renameSync(req.file.path, fileName);
 
       const prisma = getPrismaInstance();
@@ -246,6 +253,7 @@ export const addImageMessage = async (req, res, next) => {
         const message = await prisma.messages.create({
           data: {
             message: fileName,
+            transcript: "",
             sender: { connect: { id: from } },
             reciever: { connect: { id: to } },
             type: "image",
@@ -259,6 +267,96 @@ export const addImageMessage = async (req, res, next) => {
     }
 
     return res.status(400).send("Image is required.");
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const searchMessages = async (req, res, next) => {
+  try {
+    const prisma = getPrismaInstance();
+
+    const userId = parseUserId(req.query.userId);
+    const contactId = parseUserId(req.query.contactId);
+    const query = req.query.query?.trim();
+    const type = req.query.type || "all";
+
+    if (!userId || !contactId || !query) {
+      return res.status(400).send("userId, contactId and query are required.");
+    }
+
+    const searchableTypeFilter =
+      type === "text" || type === "audio"
+        ? { type }
+        : { type: { in: ["text", "audio"] } };
+
+    const searchableContentFilter =
+      type === "text"
+        ? {
+            message: {
+              contains: query,
+              mode: "insensitive",
+            },
+          }
+        : type === "audio"
+        ? {
+            transcript: {
+              contains: query,
+              mode: "insensitive",
+            },
+          }
+        : {
+            OR: [
+              {
+                AND: [
+                  { type: "text" },
+                  {
+                    message: {
+                      contains: query,
+                      mode: "insensitive",
+                    },
+                  },
+                ],
+              },
+              {
+                AND: [
+                  { type: "audio" },
+                  {
+                    transcript: {
+                      contains: query,
+                      mode: "insensitive",
+                    },
+                  },
+                ],
+              },
+            ],
+          };
+
+    const messages = await prisma.messages.findMany({
+      where: {
+        AND: [
+          {
+            OR: [
+              {
+                senderId: userId,
+                recieverId: contactId,
+              },
+              {
+                senderId: contactId,
+                recieverId: userId,
+              },
+            ],
+          },
+          searchableTypeFilter,
+          searchableContentFilter,
+        ],
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.status(200).json({ messages });
   } catch (err) {
     next(err);
   }

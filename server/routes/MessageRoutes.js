@@ -5,6 +5,7 @@ import {
   addMessage,
   getInitialContactsWithMessages,
   getMessages,
+  searchMessages,
 } from "../controllers/MessageController.js";
 import multer from "multer";
 
@@ -14,6 +15,7 @@ const uploadImage = multer({ dest: "uploads/images/" });
 const router = Router();
 
 router.post("/add-message", addMessage);
+router.get("/search", searchMessages);
 router.get("/get-messages/:from/:to", getMessages);
 router.get("/get-initial-contacts/:from", getInitialContactsWithMessages);
 
