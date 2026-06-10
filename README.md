@@ -74,29 +74,7 @@ chatlosss/
 * Optional: OpenAI API key for real voice-note transcription
 * Optional: Zego credentials for voice/video calling
 
-## Environment Variables
 
-Create a `.env` file inside `server/`:
-
-```env
-PORT=3005
-CLIENT_URL=http://localhost:3000
-DATABASE_URL="postgresql://postgres:password@localhost:5432/chatlosss?schema=public"
-
-ZEGO_APP_ID=
-ZEGO_APP_SECRET=
-
-OPENAI_API_KEY=
-OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-```
-
-Create a `.env.local` file inside `client/`:
-
-```env
-NEXT_PUBLIC_SERVER_URL=http://localhost:3005
-NEXT_PUBLIC_ZEGO_APP_ID=
-NEXT_PUBLIC_ZEGO_SERVER_ID=
-```
 
 ## Installation
 
@@ -195,19 +173,12 @@ DELETE /api/messages/delete-message/:messageId
 
 ## Current Limitations
 
-* Uploaded files are stored locally inside the backend `uploads/` folder.
 * Voice/video calling requires valid Zego credentials.
 * Real audio transcription requires an OpenAI API key.
 * The demo transcription fallback is only for local testing and should be replaced by real transcription in production.
-* Profile photo upload is currently being improved. The app already has avatar/onboarding support, but persistent uploaded profile pictures are still in progress.
-* File upload validation and storage hardening should be improved before production deployment.
 
 ## Future Improvements
 
-* Fully persistent profile photo upload and update flow
-* Cloud storage for images, audio files, and profile pictures
-* Stronger upload validation and safer filenames
-* Better error handling and toast notifications
 * Better mobile responsiveness
 * Group chat support
 * Message reactions
