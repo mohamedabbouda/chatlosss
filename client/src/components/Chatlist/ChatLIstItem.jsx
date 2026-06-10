@@ -11,7 +11,6 @@ export default function ChatLIstItem({ data, isContactPage = false }) {
   const [{ userInfo, currentChatUser }, dispatch] = useStateProvider();
 
   const handleContactClick = () => {
-    console.log("function", currentChatUser, data, userInfo);
     if (currentChatUser?.id === data?.id) {
       return dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE });
     }
@@ -30,24 +29,7 @@ export default function ChatLIstItem({ data, isContactPage = false }) {
       dispatch({ type: reducerCases.CHANGE_CURRENT_CHAT_USER, user: data });
       dispatch({ type: reducerCases.SET_ALL_CONTACTS_PAGE });
     }
-    // if (currentChatUser?.id !== userInfo?.id) {
-    //   console.log("in if");
-    //   if (isContactPage) {
-    //
-    //   } else if (data?.id !== currentChatUser?.id) {
-    //     console.log("in else");
-    //     dispatch({
-    //       type: reducerCases.CHANGE_CURRENT_CHAT_USER,
-    //       user: {
-    //         name: data.name,
-    //         about: data.about,
-    //         profilePicture: data.profilePicture,
-    //         email: data.email,
-    //         id: userInfo.id === data.senderId ? data.recieverId : data.senderId,
-    //       },
-    //     });
-    //   }
-    // }
+   
   };
   return (
     <div

@@ -41,7 +41,7 @@ function ContactsList() {
         setAllContacts(users);
         setSearchContacts(users);
       } catch (err) {
-        console.log(err);
+        // Failed to load contacts.
       }
     };
     getContacts();

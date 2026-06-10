@@ -51,7 +51,7 @@ export default function MessageBar() {
         });
       }
     } catch (err) {
-      console.log(err);
+      // Failed to upload image message.
     }
   };
 
@@ -77,7 +77,7 @@ export default function MessageBar() {
         fromSelf: true,
       });
     } catch (err) {
-      console.log(err);
+      // Failed to send message.
     }
   };
 

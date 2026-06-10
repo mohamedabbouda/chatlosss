@@ -42,9 +42,7 @@ const reducer = (state, action) => {
       };
     case reducerCases.CHANGE_CURRENT_CHAT_USER: {
       if (action.user) {
-        console.log("here");
         if (state.contactsPage) {
-          console.log("in if", action.user);
           return {
             ...state,
             currentChatUser: action.user,
