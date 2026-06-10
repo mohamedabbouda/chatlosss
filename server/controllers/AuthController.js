@@ -71,28 +71,31 @@ export const getAllUsers = async (req, res, next) => {
   }
 };
 
+
 export const generateToken = (req, res, next) => {
   try {
-    const appID = parseInt(process.env.ZEGO_APP_ID);
+    const appID = Number(process.env.ZEGO_APP_ID);
     const serverSecret = process.env.ZEGO_APP_SECRET;
     const userId = req.params.userId;
     const effectiveTimeInSeconds = 3600;
     const payload = "";
-    if (appID && serverSecret && userId) {
-      const token = generateToken04(
-        appID,
-        userId,
-        serverSecret,
-        effectiveTimeInSeconds,
-        payload
-      );
-      res.status(200).json({ token });
+
+    if (!appID || !serverSecret || !userId) {
+      return res
+        .status(400)
+        .send("User id, app id and server secret is required");
     }
-    return res
-      .status(400)
-      .send("User id, app id and server secret is required");
+
+    const token = generateToken04(
+      appID,
+      userId,
+      serverSecret,
+      effectiveTimeInSeconds,
+      payload
+    );
+
+    return res.status(200).json({ token });
   } catch (err) {
-    console.log({ err });
     next(err);
   }
 };
