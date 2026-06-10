@@ -1,77 +1,82 @@
-# Chatlosss — Full-Stack Real-Time Chat App
+# Chatlosss
 
-Chatlosss is a full-stack WhatsApp-style chat application built with Next.js, Express, Socket.IO, Prisma, PostgreSQL, Firebase Authentication, and Tailwind CSS.
-
-The app supports real-time messaging, Google login, contact discovery, image messages, audio messages, message persistence, and experimental voice/video call support using ZEGOCLOUD.
+Chatlosss is a full-stack real-time chat application inspired by WhatsApp. It supports Google authentication, one-to-one messaging, image messages, voice messages, message search, voice/video calling, and a voice-note search feature powered by audio transcription.
 
 ## Features
 
-- Google authentication with Firebase Auth
-- Real-time one-to-one messaging with Socket.IO
-- PostgreSQL database integration with Prisma ORM
-- Persistent chat history
-- Contact list with unread message counts
-- Image message upload
-- Audio message recording and playback
-- Online user tracking
-- Voice and video call flow with ZEGOCLOUD token generation
-- Separate client/server environment configuration
+* Google authentication with Firebase
+* User onboarding with display name, about/status, and avatar support
+* Real-time one-to-one messaging with Socket.IO
+* Text messages
+* Image messages
+* Voice/audio messages with waveform playback
+* Message delivery/read status
+* Contact list with latest message previews
+* Search inside conversations
+* Voice-note keyword search using stored transcripts
+* Demo transcription fallback for local testing without an OpenAI API key
+* Message deletion
+* Voice and video call support using Zego token generation
+* PostgreSQL database with Prisma ORM
+* Environment-based configuration for local development
 
 ## Tech Stack
 
 ### Frontend
 
-- Next.js 13
-- React 18
-- Tailwind CSS
-- Socket.IO Client
-- Firebase Auth
-- Axios
-- ZEGOCLOUD WebRTC SDK
-- Wavesurfer.js
+* Next.js 13
+* React
+* Tailwind CSS
+* Firebase Authentication
+* Socket.IO Client
+* WaveSurfer.js
+* Axios
+* Zego Express Engine
 
 ### Backend
 
-- Node.js
-- Express
-- Socket.IO
-- Prisma
-- PostgreSQL
-- Multer
-- ZEGOCLOUD token generation
+* Node.js
+* Express
+* Socket.IO
+* Prisma
+* PostgreSQL
+* Multer
+* OpenAI SDK for optional audio transcription
 
 ## Project Structure
 
 ```text
 chatlosss/
 ├── client/                 # Next.js frontend
-├── server/                 # Express + Socket.IO backend
-├── docs/                   # Cleanup and project notes
-├── README.md
-└── package-lock.json
-````
+│   ├── src/
+│   │   ├── components/     # Chat, call, common UI components
+│   │   ├── context/        # Global state reducer/context
+│   │   ├── pages/          # Next.js pages
+│   │   └── utils/          # API routes and helpers
+│   └── public/
+│
+├── server/                 # Express backend
+│   ├── controllers/        # Auth and message controllers
+│   ├── prisma/             # Prisma schema and migrations
+│   ├── routes/             # Express routes
+│   ├── uploads/            # Local uploaded audio/images
+│   └── utils/              # Prisma, token, transcription utilities
+│
+└── README.md
+```
 
-## Prerequisites
+## Requirements
 
-Install these before running the project:
-
-* Node.js 20+
-* npm 10+
-* PostgreSQL 14+
-* A Firebase project with Google authentication enabled
-* Optional: ZEGOCLOUD app credentials for voice/video calls
+* Node.js
+* npm
+* PostgreSQL
+* Firebase project for Google authentication
+* Optional: OpenAI API key for real voice-note transcription
+* Optional: Zego credentials for voice/video calling
 
 ## Environment Variables
 
-Create environment files from the examples.
-
-### Server
-
-```bash
-cp server/.env.example server/.env
-```
-
-Example:
+Create a `.env` file inside `server/`:
 
 ```env
 PORT=3005
@@ -80,15 +85,12 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/chatlosss?schema=pub
 
 ZEGO_APP_ID=
 ZEGO_APP_SECRET=
+
+OPENAI_API_KEY=
+OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
 ```
 
-### Client
-
-```bash
-cp client/.env.example client/.env.local
-```
-
-Example:
+Create a `.env.local` file inside `client/`:
 
 ```env
 NEXT_PUBLIC_SERVER_URL=http://localhost:3005
@@ -96,43 +98,34 @@ NEXT_PUBLIC_ZEGO_APP_ID=
 NEXT_PUBLIC_ZEGO_SERVER_ID=
 ```
 
-## Database Setup
+## Installation
 
-Create a local PostgreSQL database:
+Clone the repository and install dependencies for both apps:
 
 ```bash
-createdb chatlosss
+cd chatlosss
+
+cd server
+npm install
+
+cd ../client
+npm install
 ```
 
-Then run Prisma commands from the server folder:
+## Database Setup
+
+Create a PostgreSQL database, then run Prisma migrations:
 
 ```bash
 cd server
-npm install
-npm run prisma:generate
 npm run prisma:migrate
+npm run prisma:generate
 ```
 
-Optional: open Prisma Studio:
+You can inspect the database with:
 
 ```bash
 npm run prisma:studio
-```
-
-## Installation
-
-Install server dependencies:
-
-```bash
-cd server
-npm install
-```
-
-Install client dependencies:
-
-```bash
-cd ../client
-npm install
 ```
 
 ## Running Locally
@@ -150,7 +143,7 @@ The backend runs on:
 http://localhost:3005
 ```
 
-Start the frontend in a second terminal:
+Start the frontend:
 
 ```bash
 cd client
@@ -163,63 +156,70 @@ The frontend runs on:
 http://localhost:3000
 ```
 
-## Useful Scripts
+## Voice-Note Search
 
-### Server
+Chatlosss stores a `transcript` field for audio messages. When an audio message is sent, the backend attempts to transcribe it. The transcript is then searchable through the conversation search panel.
 
-```bash
-npm run dev              # Start backend with nodemon
-npm start                # Start backend with node
-npm run prisma:generate  # Generate Prisma client
-npm run prisma:migrate   # Run database migrations
-npm run prisma:studio    # Open Prisma Studio
+Example:
+
+```text
+Voice note says: "Did you book the hotel?"
+Search keyword: "hotel"
+Result: the matching voice note appears in search results
 ```
 
-### Client
+For local demo/testing, if no `OPENAI_API_KEY` is configured, the app uses a demo transcript fallback so the search feature can still be demonstrated without paid API usage.
 
-```bash
-npm run dev      # Start Next.js development server
-npm run build    # Build production frontend
-npm start        # Start production frontend
-npm run lint     # Run Next.js lint
+## API Overview
+
+### Auth Routes
+
+```text
+POST /api/auth/check-user
+POST /api/auth/onBoardUser
+GET  /api/auth/get-contacts
+GET  /api/auth/generate-token/:userId
 ```
 
-## Current Status
+### Message Routes
 
-Completed cleanup work includes:
-
-* Local PostgreSQL and Prisma migration setup
-* Environment variable examples for client and server
-* Socket.IO server configuration cleanup
-* Hardcoded API host removal
-* Hardcoded ZEGOCLOUD config removal from Next config
-* Upload folder auto-creation on backend startup
-* Server dependency cleanup
-* Server audit reduced to 0 vulnerabilities
-* Client dependency updates for Next.js and Firebase
-* Message controller ID validation
-* Core flow testing:
-
-  * Google login
-  * contact loading
-  * text messages
-  * image messages
-  * audio messages
-  * message persistence after refresh
-
-## Known Limitations
-
-* Some client audit issues remain because fixing them requires major upgrades to Next.js and/or the ZEGOCLOUD SDK.
-* Upload validation is intentionally deferred because strict MIME validation blocked browser-recorded audio in testing.
-* Voice/video call support requires valid ZEGOCLOUD credentials.
-* Backend routes currently rely on client-provided user IDs; stronger token-based authorization is planned as future work.
-
-See `docs/cleanup-notes.md` for detailed cleanup notes and deferred tasks.
-
-## Author
-
-Mohamed Abbouda
-EOF
-
+```text
+POST   /api/messages/add-message
+POST   /api/messages/add-image-message
+POST   /api/messages/add-audio-message
+GET    /api/messages/get-messages/:from/:to
+GET    /api/messages/get-initial-contacts/:from
+GET    /api/messages/search
+DELETE /api/messages/delete-message/:messageId
 ```
-```
+
+## Current Limitations
+
+* Uploaded files are stored locally inside the backend `uploads/` folder.
+* Voice/video calling requires valid Zego credentials.
+* Real audio transcription requires an OpenAI API key.
+* The demo transcription fallback is only for local testing and should be replaced by real transcription in production.
+* Profile photo upload is currently being improved. The app already has avatar/onboarding support, but persistent uploaded profile pictures are still in progress.
+* File upload validation and storage hardening should be improved before production deployment.
+
+## Future Improvements
+
+* Fully persistent profile photo upload and update flow
+* Cloud storage for images, audio files, and profile pictures
+* Stronger upload validation and safer filenames
+* Better error handling and toast notifications
+* Better mobile responsiveness
+* Group chat support
+* Message reactions
+* Message editing
+* Production deployment configuration
+* Automated tests
+
+## Development Notes
+
+The project is currently being cleaned and prepared as a portfolio/CV-ready full-stack application. Recent improvements include dependency cleanup, environment configuration, Prisma/PostgreSQL setup, voice-note search, message deletion, improved audio message UI, and documentation updates.
+
+## License
+
+This project is for learning and portfolio purposes.
+
