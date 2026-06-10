@@ -196,6 +196,13 @@ const reducer = (state, action) => {
         };
       }
     }
+    case reducerCases.DELETE_MESSAGE:
+      return {
+        ...state,
+        messages: state.messages.filter(
+      (message) => message.id !== action.messageId
+      ),
+      };
     case reducerCases.SET_MESSAGES:
       return {
         ...state,

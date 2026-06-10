@@ -272,6 +272,46 @@ export const addImageMessage = async (req, res, next) => {
   }
 };
 
+export const deleteMessage = async (req, res, next) => {
+  try {
+    const prisma = getPrismaInstance();
+
+    const messageId = Number.parseInt(req.params.messageId, 10);
+    const userId = parseUserId(req.query.userId);
+
+    if (!messageId || !userId) {
+      return res.status(400).send("Valid messageId and userId are required.");
+    }
+
+    const message = await prisma.messages.findUnique({
+      where: {
+        id: messageId,
+      },
+    });
+
+    if (!message) {
+      return res.status(404).send("Message not found.");
+    }
+
+    if (message.senderId !== userId && message.recieverId !== userId) {
+      return res.status(403).send("You cannot delete this message.");
+    }
+
+    await prisma.messages.delete({
+      where: {
+        id: messageId,
+      },
+    });
+
+    return res.status(200).json({
+      messageId,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 export const searchMessages = async (req, res, next) => {
   try {
     const prisma = getPrismaInstance();
