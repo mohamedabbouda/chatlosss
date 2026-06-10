@@ -1,5 +1,6 @@
 import getPrismaInstance from "../utils/PrismaClient.js";
 import { generateToken04 } from "../utils/TokenGenerator.js";
+import { renameSync } from "fs";
 
 export const checkUser = async (request, response, next) => {
   try {
@@ -71,7 +72,53 @@ export const getAllUsers = async (req, res, next) => {
   }
 };
 
+export const uploadProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send("Profile image is required.");
+    }
 
+    const date = Date.now();
+    const fileName = `uploads/profile-pictures/${date}${req.file.originalname}`;
+
+    renameSync(req.file.path, fileName);
+
+    return res.status(201).json({
+      image: fileName,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfileImage = async (req, res, next) => {
+  try {
+    const userId = Number.parseInt(req.params.userId, 10);
+    const { image } = req.body;
+
+    if (!userId || !image) {
+      return res.status(400).send("Valid userId and image are required.");
+    }
+
+    const prisma = getPrismaInstance();
+
+    const user = await prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        profilePicture: image,
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 export const generateToken = (req, res, next) => {
   try {
     const appID = Number(process.env.ZEGO_APP_ID);

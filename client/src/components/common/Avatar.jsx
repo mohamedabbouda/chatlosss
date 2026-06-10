@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { HOST } from "@/utils/ApiRoutes";
 
 import { FaCamera } from "react-icons/fa";
 import ContextMenu from "./ContextMenu";
@@ -91,15 +92,32 @@ export default function Avatar({ type, image, setImage }) {
       setImage(data.src);
     }, 100);
   };
+  const getImageSource = () => {
+    if (!image) {
+      return "/default_avatar.png";
+    }
+  
+    if (
+      image.startsWith("http") ||
+      image.startsWith("/") ||
+      image.startsWith("data:")
+    ) {
+      return image;
+    }
+  
+    return `${HOST}/${image}`;
+  };
+  
+  const imageSource = getImageSource();
 
   return (
     <>
       <div className="flex items-center justify-center">
         {type === "sm" && (
-          <img src={image} alt="avatar" className={`h-10 w-10 rounded-full`} />
+          <img src={imageSource} alt="avatar" className={`h-10 w-10 rounded-full`} />
         )}
         {type === "lg" && (
-          <img src={image} alt="avatar" className={`h-14 w-14 rounded-full`} />
+          <img src={imageSource} alt="avatar" className={`h-14 w-14 rounded-full`} />
         )}
         {type === "xl" && (
           <div
@@ -129,7 +147,7 @@ export default function Avatar({ type, image, setImage }) {
             </div>
             <div className="flex items-center justify-center">
               <img
-                src={image}
+                src={imageSource}
                 alt="avatar"
                 className={`h-60 w-60 rounded-full object-cover `}
               />

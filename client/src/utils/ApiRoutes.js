@@ -16,6 +16,8 @@ export const addAudioMessageRoute = `${messageRoute}/add-audio-message`;
 export const getInitialContactsRoute = `${messageRoute}/get-initial-contacts`;
 export const SEARCH_MESSAGES_ROUTE = `${messageRoute}/search`;
 export const DELETE_MESSAGE_ROUTE = `${messageRoute}/delete-message`;
+export const UPLOAD_PROFILE_IMAGE_ROUTE = `${authRoute}/upload-profile-image`;
+export const UPDATE_PROFILE_IMAGE_ROUTE = `${authRoute}/update-profile-image`;
 
 // Backward-compatible uppercase exports used by existing components.
 export const CHECK_USER_ROUTE = checkUserRoute;

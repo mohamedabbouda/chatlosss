@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import Avatar from "../components/common/Avatar";
 import Input from "../components/common/Input";
 import axios from "axios";
-import { onBoardUserRoute } from "../utils/ApiRoutes";
-
+import {
+  onBoardUserRoute,
+  UPLOAD_PROFILE_IMAGE_ROUTE,
+} from "../utils/ApiRoutes";
 import Resizer from "react-image-file-resizer";
 
 import Image from "next/image";
@@ -41,38 +43,67 @@ export default function OnBoarding() {
       );
     });
 
-  const onBoardUser = async () => {
-    if (validateDetails()) {
-      const email = userInfo?.email;
-      try {
-        const base64Response = await fetch(`${image}`);
-        const blob = await base64Response.blob();
-        setImage(await resizeFile(blob));
-        const { data } = await axios.post(onBoardUserRoute, {
-          email,
-          name,
-          about,
-          image,
-        });
-        if (data.status) {
-          dispatch({ type: reducerCases.SET_NEW_USER, newUser: false });
-          dispatch({
-            type: reducerCases.SET_USER_INFO,
-            userInfo: {
-              name,
-              email,
-              profileImage: image,
-              status: about,
-            },
-          });
-
-          router.push("/");
-        }
-      } catch (error) {
-        // Failed to create user profile.
+    const uploadProfileImage = async () => {
+      if (!image || image === "/default_avatar.png") {
+        return image;
       }
-    }
-  };
+    
+      if (!image.startsWith("data:")) {
+        return image;
+      }
+    
+      const response = await fetch(image);
+      const blob = await response.blob();
+    
+      const file = new File([blob], "profile-picture.png", {
+        type: blob.type || "image/png",
+      });
+    
+      const formData = new FormData();
+      formData.append("image", file);
+    
+      const { data } = await axios.post(UPLOAD_PROFILE_IMAGE_ROUTE, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    
+      return data.image;
+    };
+    
+    const onBoardUser = async () => {
+      if (validateDetails()) {
+        const email = userInfo?.email;
+    
+        try {
+          const uploadedImage = await uploadProfileImage();
+    
+          const { data } = await axios.post(onBoardUserRoute, {
+            email,
+            name,
+            about,
+            image: uploadedImage,
+          });
+    
+          if (data.status) {
+            dispatch({ type: reducerCases.SET_NEW_USER, newUser: false });
+            dispatch({
+              type: reducerCases.SET_USER_INFO,
+              userInfo: {
+                name,
+                email,
+                profileImage: uploadedImage,
+                status: about,
+              },
+            });
+    
+            router.push("/");
+          }
+        } catch (error) {
+          alert("Could not create profile. Please try again.");
+        }
+      }
+    };
 
   const validateDetails = () => {
     if (name.length < 3) {
