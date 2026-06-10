@@ -186,11 +186,5 @@ DELETE /api/messages/delete-message/:messageId
 * Production deployment configuration
 * Automated tests
 
-## Development Notes
 
-The project is currently being cleaned and prepared as a portfolio/CV-ready full-stack application. Recent improvements include dependency cleanup, environment configuration, Prisma/PostgreSQL setup, voice-note search, message deletion, improved audio message UI, and documentation updates.
-
-## License
-
-This project is for learning and portfolio purposes.
 
