@@ -8,8 +8,6 @@ server/node_modules/
 
 # testing
 /coverage
-client/package-lock.json
-server/package-lock.json
 client/yarn.lock
 server/yarn.lock
 
