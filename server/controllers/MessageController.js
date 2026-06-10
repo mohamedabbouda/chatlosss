@@ -1,20 +1,31 @@
 import { renameSync } from "fs";
 import getPrismaInstance from "../utils/PrismaClient.js";
 
+const parseUserId = (value) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
 export const getMessages = async (req, res, next) => {
   try {
     const prisma = getPrismaInstance();
-    const { from, to } = req.params;
+    const from = parseUserId(req.params.from);
+    const to = parseUserId(req.params.to);
+
+    if (!from || !to) {
+      return res.status(400).send("Valid from and to user ids are required.");
+    }
+
     const messages = await prisma.messages.findMany({
       where: {
         OR: [
           {
-            senderId: parseInt(from),
-            recieverId: parseInt(to),
+            senderId: from,
+            recieverId: to,
           },
           {
-            senderId: parseInt(to),
-            recieverId: parseInt(from),
+            senderId: to,
+            recieverId: from,
           },
         ],
       },
@@ -22,29 +33,28 @@ export const getMessages = async (req, res, next) => {
         id: "asc",
       },
     });
+
     const unreadMessages = [];
 
     messages.forEach((message, index) => {
-      if (
-        message.messageStatus !== "read" &&
-        message.senderId === parseInt(to)
-      ) {
+      if (message.messageStatus !== "read" && message.senderId === to) {
         messages[index].messageStatus = "read";
         unreadMessages.push(message.id);
       }
     });
 
+    if (unreadMessages.length) {
+      await prisma.messages.updateMany({
+        where: {
+          id: { in: unreadMessages },
+        },
+        data: {
+          messageStatus: "read",
+        },
+      });
+    }
 
-
-    await prisma.messages.updateMany({
-      where: {
-        id: { in: unreadMessages },
-      },
-      data: {
-        messageStatus: "read",
-      },
-    });
-    res.status(200).json({ messages });
+    return res.status(200).json({ messages });
   } catch (err) {
     next(err);
   }
@@ -54,22 +64,27 @@ export const addMessage = async (req, res, next) => {
   try {
     const prisma = getPrismaInstance();
 
-    const { message, from, to } = req.body;
-    const getUser = onlineUsers.get(to);
+    const { message } = req.body;
+    const from = parseUserId(req.body.from);
+    const to = parseUserId(req.body.to);
 
-    if (message && from && to) {
-      const newMessage = await prisma.messages.create({
-        data: {
-          message: message,
-          sender: { connect: { id: parseInt(from) } },
-          reciever: { connect: { id: parseInt(to) } },
-          messageStatus: getUser ? "delivered" : "sent",
-        },
-        include: { sender: true, reciever: true },
-      });
-      return res.status(201).send({ message: newMessage });
+    if (!message || !from || !to) {
+      return res.status(400).send("Valid from, to and message are required.");
     }
-    return res.status(400).send("From, to and Message is required.");
+
+    const getUser = onlineUsers.get(to.toString());
+
+    const newMessage = await prisma.messages.create({
+      data: {
+        message,
+        sender: { connect: { id: from } },
+        reciever: { connect: { id: to } },
+        messageStatus: getUser ? "delivered" : "sent",
+      },
+      include: { sender: true, reciever: true },
+    });
+
+    return res.status(201).send({ message: newMessage });
   } catch (err) {
     next(err);
   }
@@ -77,7 +92,12 @@ export const addMessage = async (req, res, next) => {
 
 export const getInitialContactsWithMessages = async (req, res, next) => {
   try {
-    const userId = parseInt(req.params.from);
+    const userId = parseUserId(req.params.from);
+
+    if (!userId) {
+      return res.status(400).send("Valid user id is required.");
+    }
+
     const prisma = getPrismaInstance();
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -92,17 +112,25 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
         },
       },
     });
+
+    if (!user) {
+      return res.status(404).send("User not found.");
+    }
+
     const messages = [...user.sentMessages, ...user.recievedMessages];
     messages.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
     const users = new Map();
     const messageStatusChange = [];
 
     messages.forEach((msg) => {
       const isSender = msg.senderId === userId;
       const calculatedId = isSender ? msg.recieverId : msg.senderId;
+
       if (msg.messageStatus === "sent") {
         messageStatusChange.push(msg.id);
       }
+
       if (!users.get(calculatedId)) {
         const {
           id,
@@ -113,6 +141,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
           senderId,
           recieverId,
         } = msg;
+
         let user = {
           messageId: id,
           type,
@@ -122,6 +151,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
           senderId,
           recieverId,
         };
+
         if (isSender) {
           user = {
             ...user,
@@ -135,6 +165,7 @@ export const getInitialContactsWithMessages = async (req, res, next) => {
             totalUnreadMessages: messageStatus !== "read" ? 1 : 0,
           };
         }
+
         users.set(calculatedId, {
           ...user,
         });
@@ -173,21 +204,27 @@ export const addAudioMessage = async (req, res, next) => {
       const date = Date.now();
       let fileName = "uploads/recordings/" + date + req.file.originalname;
       renameSync(req.file.path, fileName);
+
       const prisma = getPrismaInstance();
-      const { from, to } = req.query;
+      const from = parseUserId(req.query.from);
+      const to = parseUserId(req.query.to);
+
       if (from && to) {
         const message = await prisma.messages.create({
           data: {
             message: fileName,
-            sender: { connect: { id: parseInt(from) } },
-            reciever: { connect: { id: parseInt(to) } },
+            sender: { connect: { id: from } },
+            reciever: { connect: { id: to } },
             type: "audio",
           },
         });
+
         return res.status(201).json({ message });
       }
-      return res.status(400).send("From, to is required.");
+
+      return res.status(400).send("Valid from and to user ids are required.");
     }
+
     return res.status(400).send("Audio is required.");
   } catch (err) {
     next(err);
@@ -200,21 +237,27 @@ export const addImageMessage = async (req, res, next) => {
       const date = Date.now();
       let fileName = "uploads/images/" + date + req.file.originalname;
       renameSync(req.file.path, fileName);
+
       const prisma = getPrismaInstance();
-      const { from, to } = req.query;
+      const from = parseUserId(req.query.from);
+      const to = parseUserId(req.query.to);
+
       if (from && to) {
         const message = await prisma.messages.create({
           data: {
             message: fileName,
-            sender: { connect: { id: parseInt(from) } },
-            reciever: { connect: { id: parseInt(to) } },
+            sender: { connect: { id: from } },
+            reciever: { connect: { id: to } },
             type: "image",
           },
         });
+
         return res.status(201).json({ message });
       }
-      return res.status(400).send("From, to is required.");
+
+      return res.status(400).send("Valid from and to user ids are required.");
     }
+
     return res.status(400).send("Image is required.");
   } catch (err) {
     next(err);
