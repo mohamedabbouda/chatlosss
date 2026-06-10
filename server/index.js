@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import { mkdirSync } from "fs";
 import AuthRoutes from "./routes/AuthRoutes.js";
 import MessageRoutes from "./routes/MessageRoutes.js";
 import { Server } from "socket.io";
@@ -10,6 +11,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3005;
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+
+mkdirSync("uploads/recordings", { recursive: true });
+mkdirSync("uploads/images", { recursive: true });
 
 app.use(
   cors({
