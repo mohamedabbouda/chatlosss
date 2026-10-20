@@ -1,35 +1,55 @@
-import fs from "fs";
+
+import fs from "node:fs";
 import OpenAI from "openai";
 
-import { env, isProduction } from "../config/env.js";
+import { env } from "../config/env.js";
 
-const openai = env.openaiApiKey
-  ? new OpenAI({
-      apiKey: env.openaiApiKey,
-    })
-  : null;
+let openai = null;
 
-const DEMO_TRANSCRIPT =
-  "hotel booking test voice note demo transcript for searchable audio messages";
-
-export const transcribeAudioFile = async (filePath) => {
-  if (!openai) {
-    return isProduction ? "" : DEMO_TRANSCRIPT;
+const getOpenAIClient = () => {
+  if (!env.openaiApiKey) {
+    throw new Error(
+      "OPENAI_API_KEY is missing. Real audio transcription is unavailable."
+    );
   }
 
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: env.openaiApiKey,
+    });
+  }
+
+  return openai;
+};
+
+export const transcribeAudioFile = async (filePath) => {
+  const client = getOpenAIClient();
+
   try {
-    const transcription = await openai.audio.transcriptions.create({
+    console.log("Starting audio transcription:", filePath);
+
+    const result = await client.audio.transcriptions.create({
       file: fs.createReadStream(filePath),
       model: env.openaiTranscriptionModel,
-      response_format: "text",
+      response_format: "json",
     });
 
-    if (typeof transcription === "string") {
-      return transcription.trim();
+    const transcript = result.text?.trim() || "";
+
+    if (!transcript) {
+      throw new Error("Transcription returned empty text.");
     }
 
-    return transcription?.text?.trim() || "";
+    console.log("Audio transcription completed.");
+
+    return transcript;
   } catch (error) {
-    return isProduction ? "" : DEMO_TRANSCRIPT;
+    console.error("Audio transcription failed:", {
+      message: error.message,
+      status: error.status,
+      code: error.code,
+    });
+
+    throw error;
   }
 };
