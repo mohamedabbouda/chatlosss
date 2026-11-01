@@ -1,12 +1,15 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "nodemon index.js",
-    "start": "node index.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
-  },
+  "dev": "nodemon index.js",
+  "start": "node index.js",
+  "test": "node --test",
+    "test:integration": "DATABASE_URL=\"postgresql://${USER}@localhost:5432/chatlosss_test?schema=public\" node --test tests/*.integration.test.js",
+
+  "prisma:generate": "prisma generate",
+  "prisma:migrate": "prisma migrate dev",
+  "prisma:studio": "prisma studio"
+},
   "dependencies": {
     "@prisma/client": "^4.14.0",
     "cors": "^2.8.5",
