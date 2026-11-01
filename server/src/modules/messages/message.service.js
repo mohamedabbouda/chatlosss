@@ -278,84 +278,77 @@ export const searchConversationMessages = async ({
 }) => {
   const prisma = getPrismaClient();
 
-  const searchableTypeFilter =
-    type === "text" || type === "audio"
-      ? {
-          type,
-        }
-      : {
-          type: {
-            in: ["text", "audio"],
-          },
-        };
+  const searchTerm = query.trim();
+  const searchType = type || "all";
 
-  const searchableContentFilter =
-    type === "text"
-      ? {
-          message: {
-            contains: query,
-            mode: "insensitive",
-          },
-        }
-      : type === "audio"
-      ? {
-          transcript: {
-            contains: query,
-            mode: "insensitive",
-          },
-        }
-      : {
-          OR: [
-            {
-              AND: [
-                {
-                  type: "text",
-                },
-                {
-                  message: {
-                    contains: query,
-                    mode: "insensitive",
-                  },
-                },
-              ],
-            },
-            {
-              AND: [
-                {
-                  type: "audio",
-                },
-                {
-                  transcript: {
-                    contains: query,
-                    mode: "insensitive",
-                  },
-                },
-              ],
-            },
-          ],
-        };
+  // Escape LIKE special characters so the user's input is literal.
+  const escapedTerm = searchTerm.replace(/[\\%_]/g, "\\$&");
+  const pattern = `%${escapedTerm}%`;
 
-  return prisma.messages.findMany({
-    where: {
-      AND: [
-        {
-          OR: [
-            {
-              senderId: userId,
-              recieverId: contactId,
-            },
-            {
-              senderId: contactId,
-              recieverId: userId,
-            },
-          ],
-        },
-        searchableTypeFilter,
-        searchableContentFilter,
-      ],
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+  return prisma.$transaction(async (tx) => {
+    // The threshold applies to this transaction only.
+    await tx.$queryRaw`
+      SELECT set_config(
+        'pg_trgm.word_similarity_threshold',
+        '0.5',
+        true
+      )
+    `;
+
+    const messages = await tx.$queryRaw`
+      SELECT m.*
+      FROM "Messages" AS m
+      WHERE
+        (
+          (
+            m."senderId" = ${userId}
+            AND m."recieverId" = ${contactId}
+          )
+          OR
+          (
+            m."senderId" = ${contactId}
+            AND m."recieverId" = ${userId}
+          )
+        )
+        AND
+        (
+          (
+            m.type = 'text'
+            AND ${searchType} IN ('all', 'text')
+            AND (
+              m.message ILIKE ${pattern}
+              OR ${searchTerm} <% m.message
+            )
+          )
+          OR
+          (
+            m.type = 'audio'
+            AND ${searchType} IN ('all', 'audio')
+            AND (
+              m.transcript ILIKE ${pattern}
+              OR ${searchTerm} <% m.transcript
+            )
+          )
+        )
+      ORDER BY
+        CASE
+          WHEN m.type = 'text'
+            AND m.message ILIKE ${pattern}
+            THEN 0
+          WHEN m.type = 'audio'
+            AND m.transcript ILIKE ${pattern}
+            THEN 0
+          ELSE 1
+        END ASC,
+        CASE
+          WHEN m.type = 'text'
+            THEN word_similarity(${searchTerm}, m.message)
+          ELSE word_similarity(${searchTerm}, m.transcript)
+        END DESC,
+        m."createdAt" DESC,
+        m.id DESC
+    `;
+
+    return messages;
   });
 };
